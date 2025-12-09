@@ -1,0 +1,16 @@
+# 忽略编译生成目录
+build/
+cmake-build-debug/
+
+# 忽略IDE配置文件 (如果你用 VSCode)
+.vscode/
+.idea/
+
+# 忽略二进制可执行文件
+bin/
+lib/
+
+# 忽略临时文件
+*.swp
+*~
+.DS_Store
