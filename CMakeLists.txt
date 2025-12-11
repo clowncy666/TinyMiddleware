@@ -6,8 +6,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 寻找 Fast DDS 库 (核心步骤)
-find_package(fastrtps REQUIRED)
-find_package(fastcdr REQUIRED)
+#find_package(fastrtps REQUIRED)
+#find_package(fastcdr REQUIRED)
 
 # 包含头文件路径
 include_directories(${CMAKE_SOURCE_DIR}/include)
