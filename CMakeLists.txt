@@ -15,4 +15,4 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 # 添加子目录
 add_subdirectory(src)
 add_subdirectory(apps)
-add_subdirectory(playground) # 你的练手代码
+add_subdirectory(playground)

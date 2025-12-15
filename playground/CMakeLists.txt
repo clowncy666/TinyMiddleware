@@ -46,3 +46,7 @@ add_executable(day03_integration
 
 target_include_directories(day03_integration PRIVATE ${GEN_DIR})
 target_link_libraries(day03_integration fastdds fastcdr Threads::Threads)
+
+
+add_executable(day04_refactor day04_refactor/main.cpp)
+target_link_libraries(day04_refactor tiny_core Threads::Threads)
