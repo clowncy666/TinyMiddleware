@@ -1,5 +1,6 @@
 set(SOURCES
     core/EventLoop.cpp
+    core/ThreadPool.cpp
 )
 
 # 【核心指令】创建一个库 (STATIC 表示静态库 .a，SHARED 表示动态库 .so)
