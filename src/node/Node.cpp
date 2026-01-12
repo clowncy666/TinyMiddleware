@@ -13,16 +13,7 @@
 using namespace eprosima::fastdds::dds;
 namespace tiny_mw {
 namespace node {
-class BridgeListener : public DataReaderListener {
-public:
-    BridgeListener(int fd) : efd_(fd) {}
-    void on_data_available(DataReader* reader) override {
-        uint64_t u=1;
-        write(efd_,&u,sizeof(uint64_t));
-    }
-private:
-    int efd_;
-};  
+
 Node::Node(const std::string& node_name) : name_(node_name) {
     //1.初始化引擎
     loop_=std::make_shared<core::EventLoop>();
@@ -35,9 +26,9 @@ Node::Node(const std::string& node_name) : name_(node_name) {
         std::cerr<<"[NODE] fail to create participant"<<std::endl;
         exit(-1);
     }
-    //3.注册类型（暂时固定）
+    /*3.注册类型（暂时固定）
     TypeSupport type(new HelloWorldPubSubType());
-    type.register_type(participant_);
+    type.register_type(participant_);*/
     //4.创建subscriber
     subscriber_=participant_->create_subscriber(SUBSCRIBER_QOS_DEFAULT);
 }
@@ -49,7 +40,7 @@ void Node::spin() {
     std::cout<<"[NODE] "<<name_<<" start spinning"<<std::endl;
     loop_->run();
 }
-void Node::create_subscription(const std::string& topic_name, MsgCallback callback) {
+/*void Node::create_subscription(const std::string& topic_name, MsgCallback callback) {
     //1.创建eventfd
     int efd=eventfd(0,EFD_NONBLOCK | EFD_CLOEXEC);
     if(efd==-1) {
@@ -87,7 +78,7 @@ void Node::create_subscription(const std::string& topic_name, MsgCallback callba
                 });
             }
         }
-    });
-}
+    });*/
+
 } //namespace node
 } //namespace tiny_mw
