@@ -90,3 +90,8 @@ target_link_libraries(day06_reactor
 add_executable(day07_node day07_node_class/main.cpp)
 
 target_link_libraries(day07_node tiny_core fastdds fastcdr Threads::Threads)
+
+# --- Day 08: Generic Publisher ---
+add_executable(day08_pub day08_generic_pub/main.cpp)
+target_include_directories(day08_pub PRIVATE ${CMAKE_SOURCE_DIR}/src/generated)
+target_link_libraries(day08_pub tiny_core fastdds fastcdr Threads::Threads)

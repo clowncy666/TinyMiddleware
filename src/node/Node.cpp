@@ -31,6 +31,7 @@ Node::Node(const std::string& node_name) : name_(node_name) {
     type.register_type(participant_);*/
     //4.创建subscriber
     subscriber_=participant_->create_subscriber(SUBSCRIBER_QOS_DEFAULT);
+    dds_publisher_ = participant_->create_publisher(PUBLISHER_QOS_DEFAULT);
 }
 Node::~Node() {
     //先loop停止，再pool停止,再释放DDS
