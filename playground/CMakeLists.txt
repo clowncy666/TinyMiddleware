@@ -86,3 +86,7 @@ target_link_libraries(day06_reactor
     tiny_core 
     Threads::Threads
 )
+# --- Day 07: node ---
+add_executable(day07_node day07_node_class/main.cpp)
+
+target_link_libraries(day07_node tiny_core fastdds fastcdr Threads::Threads)

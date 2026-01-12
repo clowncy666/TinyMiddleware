@@ -1,0 +1,93 @@
+#include "tiny_mw/node/Node.h"
+#include <iostream>
+#include <sys/eventfd.h>
+#include <unistd.h>
+#include <fastdds/dds/domain/DomainParticipantFactory.hpp>
+#include <fastdds/dds/domain/DomainParticipant.hpp>
+#include <fastdds/dds/subscriber/Subscriber.hpp>
+#include <fastdds/dds/subscriber/DataReaderListener.hpp>
+#include <fastdds/dds/subscriber/DataReader.hpp>
+#include <fastdds/dds/subscriber/qos/DataReaderQos.hpp>
+#include <fastdds/dds/topic/TypeSupport.hpp>
+#include <fastdds/dds/topic/Topic.hpp>
+using namespace eprosima::fastdds::dds;
+namespace tiny_mw {
+namespace node {
+class BridgeListener : public DataReaderListener {
+public:
+    BridgeListener(int fd) : efd_(fd) {}
+    void on_data_available(DataReader* reader) override {
+        uint64_t u=1;
+        write(efd_,&u,sizeof(uint64_t));
+    }
+private:
+    int efd_;
+};  
+Node::Node(const std::string& node_name) : name_(node_name) {
+    //1.初始化引擎
+    loop_=std::make_shared<core::EventLoop>();
+    pool_=std::make_shared<core::ThreadPool>(4);
+    //2.初始化fastdds participant
+    DomainParticipantQos pqos;
+    pqos.name(node_name);
+    participant_=DomainParticipantFactory::get_instance()->create_participant(0,pqos);
+    if(participant_==nullptr) {
+        std::cerr<<"[NODE] fail to create participant"<<std::endl;
+        exit(-1);
+    }
+    //3.注册类型（暂时固定）
+    TypeSupport type(new HelloWorldPubSubType());
+    type.register_type(participant_);
+    //4.创建subscriber
+    subscriber_=participant_->create_subscriber(SUBSCRIBER_QOS_DEFAULT);
+}
+Node::~Node() {
+    //先loop停止，再pool停止,再释放DDS
+    loop_->stop();
+}
+void Node::spin() {
+    std::cout<<"[NODE] "<<name_<<" start spinning"<<std::endl;
+    loop_->run();
+}
+void Node::create_subscription(const std::string& topic_name, MsgCallback callback) {
+    //1.创建eventfd
+    int efd=eventfd(0,EFD_NONBLOCK | EFD_CLOEXEC);
+    if(efd==-1) {
+        std::cerr<<"[NODE] fail to create eventfd"<<std::endl;
+        return;
+    }
+    //2.dds资源准备
+    // 注意：这里需要检查 Topic 是否已存在，为简单起见直接创建
+    Topic* topic = participant_->create_topic(topic_name, "HelloWorld", TOPIC_QOS_DEFAULT);
+    
+    BridgeListener* listener = new BridgeListener(efd);
+    DataReader* reader = subscriber_->create_datareader(topic, DATAREADER_QOS_DEFAULT, listener);
+    //3.保存上下文防止内存泄漏
+    auto ctx=std::make_shared<SubContext>();
+    ctx->topic = topic;
+    ctx->reader = reader;
+    ctx->listener = listener;
+    ctx->event_fd = efd;
+    subs_.push_back(ctx);
+    //4.eventloop绑定
+    loop_->addEvent(efd, [this, reader, callback, efd]() {
+        // A. 清除信号
+        uint64_t u;
+        read(efd, &u, sizeof(uint64_t));
+
+        // B. 拿数据
+        HelloWorld sample;
+        SampleInfo info;
+        while (reader->take_next_sample(&sample, &info) == 0) {
+            if (info.valid_data) {
+                // C. 丢进线程池 (拷贝 sample)
+                pool_->enqueue([callback, sample]() {
+                    // D. 执行用户逻辑
+                    callback(sample);
+                });
+            }
+        }
+    });
+}
+} //namespace node
+} //namespace tiny_mw
