@@ -95,3 +95,14 @@ target_link_libraries(day07_node tiny_core fastdds fastcdr Threads::Threads)
 add_executable(day08_pub day08_generic_pub/main.cpp)
 target_include_directories(day08_pub PRIVATE ${CMAKE_SOURCE_DIR}/src/generated)
 target_link_libraries(day08_pub tiny_core fastdds fastcdr Threads::Threads)
+
+
+# 1. Performance Publisher (性能发布者)
+add_executable(perf_pub day08_testpubsub/perf_pub.cpp)
+target_include_directories(perf_pub PRIVATE ${CMAKE_SOURCE_DIR}/src/generated)
+target_link_libraries(perf_pub tiny_core fastdds fastcdr Threads::Threads)
+
+# 2. Performance Subscriber (性能订阅者)
+add_executable(perf_sub day08_testpubsub/perf_sub.cpp)
+target_include_directories(perf_sub PRIVATE ${CMAKE_SOURCE_DIR}/src/generated)
+target_link_libraries(perf_sub tiny_core fastdds fastcdr Threads::Threads)
