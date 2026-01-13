@@ -23,6 +23,8 @@
 // 【新增】必须包含以下两个头文件，因为模板函数中用到了 eventfd 和 read
 #include <sys/eventfd.h> // for eventfd
 #include <unistd.h>      // for read, write
+#include <sys/timerfd.h>
+#include <chrono>
 template<typename MsgType>
 struct MsgTypeSupportTraits{};
 // 前置声明 FastDDS 的类，避免把巨大的头文件暴露给用户
@@ -57,6 +59,7 @@ public:
 private:
     eprosima::fastdds::dds::DataWriter* writer_;
 };
+
 class BridgeListener : public eprosima::fastdds::dds::DataReaderListener { 
 public:
     BridgeListener(int fd) : efd_(fd) {}
@@ -68,8 +71,18 @@ private:
     int efd_;
 };
 
+struct TimerContext {
+    int timer_fd;
+    std::function<void()> callback;
+    // 析构时关闭 fd，防止泄露
+    ~TimerContext() {
+        if (timer_fd > 0) ::close(timer_fd);
+    }
+};
+
 class Node {
 public:
+
     //using MsgCallback =  std::function<void(const HelloWorld&)>;
     // 构造函数：初始化所有底层资源
     explicit Node(const std::string& node_name);
@@ -191,6 +204,14 @@ public:
         // 5. 返回包装好的 Publisher 对象
         return std::make_shared<Publisher<MsgType>>(writer);
     }
+    // =========================================================
+    // [新增] 创建周期定时器
+    // period_ms: 周期（毫秒）
+    // callback: 回调函数
+    // =========================================================
+    std::shared_ptr<TimerContext> create_wall_timer(
+        int period_ms, 
+        std::function<void()> callback);
 private:
     std::string name_;
     std::shared_ptr<core::EventLoop> loop_;
@@ -206,6 +227,8 @@ private:
         int event_fd; // 每个订阅者对应一个 eventfd
     };
     std::vector<std::shared_ptr<SubContext>> subs_;
+    // [新增] 存储定时器，防止智能指针析构导致资源释放
+    std::vector<std::shared_ptr<TimerContext>> timers_;
 };
 } // namespace node
 } // namespace tiny_mw

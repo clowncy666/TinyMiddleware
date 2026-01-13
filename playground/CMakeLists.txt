@@ -106,3 +106,8 @@ target_link_libraries(perf_pub tiny_core fastdds fastcdr Threads::Threads)
 add_executable(perf_sub day08_testpubsub/perf_sub.cpp)
 target_include_directories(perf_sub PRIVATE ${CMAKE_SOURCE_DIR}/src/generated)
 target_link_libraries(perf_sub tiny_core fastdds fastcdr Threads::Threads)
+
+# --- Day 09: Timer ---
+add_executable(day09_timer day09_timer/main.cpp)
+target_include_directories(day09_timer PRIVATE ${CMAKE_SOURCE_DIR}/src/generated)
+target_link_libraries(day09_timer tiny_core fastdds fastcdr Threads::Threads)

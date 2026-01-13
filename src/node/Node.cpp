@@ -10,6 +10,8 @@
 #include <fastdds/dds/subscriber/qos/DataReaderQos.hpp>
 #include <fastdds/dds/topic/TypeSupport.hpp>
 #include <fastdds/dds/topic/Topic.hpp>
+#include <sys/timerfd.h>
+#include <cstring> // for memset
 using namespace eprosima::fastdds::dds;
 namespace tiny_mw {
 namespace node {
@@ -80,6 +82,58 @@ void Node::spin() {
             }
         }
     });*/
+
+std::shared_ptr<TimerContext> Node::create_wall_timer(
+    int period_ms, 
+    std::function<void()> callback) {
+    // 1. 创建 timerfd
+    //CLOCK_MONOTONIC: 系统启动后流逝的时间，不受修改系统时间影响（稳！）
+    int tfd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+    if (tfd == -1) {
+        std::cerr << "[Node] Failed to create timerfd: " <<std::endl;
+        return nullptr;
+    }
+    // 2. 设置时间
+    struct itimerspec new_value;
+    memset(&new_value, 0, sizeof(new_value));
+    // 首次触发时间 (立刻触发还是等一个周期？这里设置等一个周期)
+    new_value.it_value.tv_sec = period_ms / 1000;
+    new_value.it_value.tv_nsec = (period_ms % 1000) * 1000000;
+
+    // 周期时间 (Interval)
+    new_value.it_interval.tv_sec = period_ms / 1000;
+    new_value.it_interval.tv_nsec = (period_ms % 1000) * 1000000;
+
+    // 启动定时器
+    if (timerfd_settime(tfd, 0, &new_value, nullptr) == -1) {
+        std::cerr << "[Node] Failed to set timer time!" << std::endl;
+        close(tfd);
+        return nullptr;
+    }
+    // 3. 注册到 EventLoop
+    // 这里的逻辑和 Subscriber 一模一样：Epoll 唤醒 -> 读 fd -> 丢进线程池
+    loop_->addEvent(tfd, [this, tfd, callback]() {
+        // A. 必须读取 timerfd，否则 epoll 会一直触发 (Level Trigger)
+        // read 返回的是超时次数 (uint64_t)
+        uint64_t exp;
+        ssize_t s = read(tfd, &exp, sizeof(uint64_t));
+        if (s != sizeof(uint64_t)) return;
+
+        // B. 丢进线程池执行用户回调
+        pool_->enqueue([callback]() {
+            callback();
+        });
+    });
+
+    // 4. 保存上下文并返回
+    auto ctx = std::make_shared<TimerContext>();
+    ctx->timer_fd = tfd;
+    ctx->callback = callback;
+    timers_.push_back(ctx);
+
+    std::cout << "[Node] Created timer with period: " << period_ms << "ms" << std::endl;
+    return ctx;
+}
 
 } //namespace node
 } //namespace tiny_mw
