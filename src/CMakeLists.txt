@@ -1,10 +1,23 @@
+# 1. 寻找 hiredis 库
+find_path(HIREDIS_INCLUDE_DIR hiredis/hiredis.h)
+find_library(HIREDIS_LIB hiredis)
+
+if (NOT HIREDIS_LIB)
+    message(FATAL_ERROR "hiredis not found! Run: sudo apt install libhiredis-dev")
+endif()
+
+
 set(SOURCES
     core/EventLoop.cpp
     core/ThreadPool.cpp
+    core/ParamClient.cpp
     node/Node.cpp 
     
     generated/HelloWorldPubSubTypes.cxx    # 发布订阅类型支持
     generated/HelloWorldTypeObjectSupport.cxx # 
+
+    generated/PingPongPubSubTypes.cxx    # 发布订阅类型支持
+    generated/PingPongTypeObjectSupport.cxx # 
    
 )
 
@@ -17,6 +30,7 @@ add_library(tiny_core STATIC ${SOURCES})
 target_include_directories(tiny_core PUBLIC 
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/generated
+    ${HIREDIS_INCLUDE_DIR}
 )
-
+target_link_libraries(tiny_core PUBLIC ${HIREDIS_LIB})
 

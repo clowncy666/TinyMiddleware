@@ -25,6 +25,7 @@
 #include <unistd.h>      // for read, write
 #include <sys/timerfd.h>
 #include <chrono>
+#include "tiny_mw/core/ParamClient.h"
 template<typename MsgType>
 struct MsgTypeSupportTraits{};
 // 前置声明 FastDDS 的类，避免把巨大的头文件暴露给用户
@@ -212,6 +213,8 @@ public:
     std::shared_ptr<TimerContext> create_wall_timer(
         int period_ms, 
         std::function<void()> callback);
+    void set_parameter(const std::string& key, const std::string& value);
+    std::string get_parameter(const std::string& key);
 private:
     std::string name_;
     std::shared_ptr<core::EventLoop> loop_;
@@ -229,6 +232,7 @@ private:
     std::vector<std::shared_ptr<SubContext>> subs_;
     // [新增] 存储定时器，防止智能指针析构导致资源释放
     std::vector<std::shared_ptr<TimerContext>> timers_;
+    std::unique_ptr<core::ParamClient> param_client_;
 };
 } // namespace node
 } // namespace tiny_mw

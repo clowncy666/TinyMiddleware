@@ -111,3 +111,13 @@ target_link_libraries(perf_sub tiny_core fastdds fastcdr Threads::Threads)
 add_executable(day09_timer day09_timer/main.cpp)
 target_include_directories(day09_timer PRIVATE ${CMAKE_SOURCE_DIR}/src/generated)
 target_link_libraries(day09_timer tiny_core fastdds fastcdr Threads::Threads)
+
+# --- Day 10: Redis Param ---
+add_executable(day10_param day10_redis_param/main.cpp)
+# 只需要链接 tiny_core，因为它已经 PUBLIC 链接了 hiredis
+target_link_libraries(day10_param tiny_core fastdds fastcdr Threads::Threads)
+
+# --- Day 11: latency ---
+add_executable(day11_latency day11_latency/main.cpp)
+# 只需要链接 tiny_core，因为它已经 PUBLIC 链接了 hiredis
+target_link_libraries(day11_latency tiny_core fastdds fastcdr Threads::Threads)

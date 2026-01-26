@@ -12,6 +12,8 @@
 #include <fastdds/dds/topic/Topic.hpp>
 #include <sys/timerfd.h>
 #include <cstring> // for memset
+#include "tiny_mw/core/ParamClient.h"
+
 using namespace eprosima::fastdds::dds;
 namespace tiny_mw {
 namespace node {
@@ -20,20 +22,43 @@ Node::Node(const std::string& node_name) : name_(node_name) {
     //1.初始化引擎
     loop_=std::make_shared<core::EventLoop>();
     pool_=std::make_shared<core::ThreadPool>(4);
-    //2.初始化fastdds participant
-    DomainParticipantQos pqos;
-    pqos.name(node_name);
-    participant_=DomainParticipantFactory::get_instance()->create_participant(0,pqos);
-    if(participant_==nullptr) {
-        std::cerr<<"[NODE] fail to create participant"<<std::endl;
+    // 初始化参数客户端
+    param_client_ = std::make_unique<core::ParamClient>();
+    // 尝试连接，如果不成功也别崩，打印个警告就行
+    if (!param_client_->connect()) {
+        std::cerr << "[Node Warning] Parameter Server (Redis) not available!" << std::endl;
+    }
+    // 尝试加载根目录下的 shm_profile.xml
+    // 如果文件不存在，FastDDS 会报错但程序会继续（回退到默认）
+
+
+    DomainParticipantFactory::get_instance()->load_XML_profiles_file("shm_profile.xml");
+    participant_ = DomainParticipantFactory::get_instance()->create_participant_with_profile(
+        0, "shm_participant_profile");
+
+    // 如果 XML 加载失败 (返回 nullptr)，则使用代码中的默认 QoS
+    if (participant_ == nullptr) {
+        std::cout << "[Node] SHM profile not found, falling back to DEFAULT QoS..." << std::endl;
+        
+        DomainParticipantQos pqos;
+        pqos.name(node_name);
+        participant_ = DomainParticipantFactory::get_instance()->create_participant(0, pqos);
+    } else {
+        std::cout << "[Node] Loaded High-Performance SHM Profile!" << std::endl;
+    }
+    // -------------------------------------------------------------------------
+
+    // 最后安全检查：如果还是空的，说明 FastDDS 彻底挂了
+    if (participant_ == nullptr) {
+        std::cerr << "[NODE Error] Failed to create participant!" << std::endl;
         exit(-1);
     }
-    /*3.注册类型（暂时固定）
-    TypeSupport type(new HelloWorldPubSubType());
-    type.register_type(participant_);*/
-    //4.创建subscriber
     subscriber_=participant_->create_subscriber(SUBSCRIBER_QOS_DEFAULT);
     dds_publisher_ = participant_->create_publisher(PUBLISHER_QOS_DEFAULT);
+    if (!subscriber_ || !dds_publisher_) {
+        std::cerr << "[NODE Error] Failed to create subscriber or publisher!" << std::endl;
+        exit(-1);
+    }
 }
 Node::~Node() {
     //先loop停止，再pool停止,再释放DDS
@@ -134,6 +159,16 @@ std::shared_ptr<TimerContext> Node::create_wall_timer(
     std::cout << "[Node] Created timer with period: " << period_ms << "ms" << std::endl;
     return ctx;
 }
+void Node::set_parameter(const std::string& key, const std::string& value) {
+    // 自动给 key 加上节点名命名空间，防止冲突? 
+    // 或者做成全局的。这里先做成全局的，方便大家共享。
+    param_client_->set(key, value);
+}
+
+std::string Node::get_parameter(const std::string& key) {
+    return param_client_->get(key);
+}
+
 
 } //namespace node
 } //namespace tiny_mw
