@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package pb; // 定义包名，防止命名冲突
+
+message RobotStatus {
+    int32 id = 1;
+    string state = 2;
+    float battery_level = 3;
+    repeated float position = 4; // 数组 [x, y, z]
+}

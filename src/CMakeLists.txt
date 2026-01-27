@@ -18,6 +18,10 @@ set(SOURCES
 
     generated/PingPongPubSubTypes.cxx    # 发布订阅类型支持
     generated/PingPongTypeObjectSupport.cxx # 
+
+    # 【新增】BlobMsg 必须加进去！
+    generated/BlobMsgTypeObjectSupport.cxx
+    generated/BlobMsgPubSubTypes.cxx
    
 )
 

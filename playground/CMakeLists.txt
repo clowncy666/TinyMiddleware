@@ -26,26 +26,32 @@ add_executable(dds_subscriber
 target_link_libraries(dds_subscriber fastdds fastcdr)
 
 # --- Day 03: Integration ---
-find_program(FASTDDSGEN_EXE fastddsgen REQUIRED)
-set(IDL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/day03_integration/HelloWorld.idl)
-set(GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/day03_gen)
-file(MAKE_DIRECTORY ${GEN_DIR})
-add_custom_command(
-    OUTPUT 
-        ${GEN_DIR}/HelloWorld.hpp              
-        ${GEN_DIR}/HelloWorldPubSubTypes.cxx
-        ${GEN_DIR}/HelloWorldPubSubTypes.hpp
-    COMMAND ...
-)
-add_executable(day03_integration
-    day03_integration/main.cpp
+if(FASTDDSGEN_EXE)
+    set(IDL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/day03_integration/HelloWorld.idl)
+    set(GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/day03_gen)
+    file(MAKE_DIRECTORY ${GEN_DIR})
     
-    ${GEN_DIR}/HelloWorldPubSubTypes.cxx 
-    ${GEN_DIR}/HelloWorldTypeObjectSupport.cxx
-)
+    # 注意：你原文里这里写的是 COMMAND ... 我保留原样，实际运行需确保逻辑正确
+    add_custom_command(
+        OUTPUT 
+            ${GEN_DIR}/HelloWorld.hpp              
+            ${GEN_DIR}/HelloWorldPubSubTypes.cxx
+            ${GEN_DIR}/HelloWorldPubSubTypes.hpp
+        COMMAND ${FASTDDSGEN_EXE} -replace -d ${GEN_DIR} ${IDL_FILE}
+        DEPENDS ${IDL_FILE}
+    )
+    add_executable(day03_integration
+        day03_integration/main.cpp
+        ${GEN_DIR}/HelloWorldPubSubTypes.cxx 
+        ${GEN_DIR}/HelloWorldTypeObjectSupport.cxx
+    )
 
-target_include_directories(day03_integration PRIVATE ${GEN_DIR})
-target_link_libraries(day03_integration fastdds fastcdr Threads::Threads)
+    target_include_directories(day03_integration PRIVATE ${GEN_DIR})
+    target_link_libraries(day03_integration fastdds fastcdr Threads::Threads)
+else()
+    message(STATUS "fastddsgen not found. Skipping Day 03 build.")
+endif()
+
 
 
 add_executable(day04_refactor day04_refactor/main.cpp)
@@ -56,36 +62,29 @@ target_link_libraries(day05_pool tiny_core Threads::Threads)
 
 
 # --- Day 06: Full Reactor ---
+if(FASTDDSGEN_EXE)
+    set(D06_IDL ${CMAKE_CURRENT_SOURCE_DIR}/day06_full_reactor/HelloWorld.idl)
+    set(D06_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/day06_gen)
+    file(MAKE_DIRECTORY ${D06_GEN_DIR})
 
-# 1. 设置 IDL 生成路径
-set(D06_IDL ${CMAKE_CURRENT_SOURCE_DIR}/day06_full_reactor/HelloWorld.idl)
-set(D06_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/day06_gen)
-file(MAKE_DIRECTORY ${D06_GEN_DIR})
+    add_custom_command(
+        OUTPUT ${D06_GEN_DIR}/HelloWorld.h ${D06_GEN_DIR}/HelloWorldPubSubTypes.cxx ${D06_GEN_DIR}/HelloWorldPubSubTypes.h ${D06_GEN_DIR}/HelloWorldTypeObjectSupport.cxx ${D06_GEN_DIR}/HelloWorldTypeObjectSupport.h
+        COMMAND ${FASTDDSGEN_EXE} -replace -d ${D06_GEN_DIR} ${D06_IDL}
+        DEPENDS ${D06_IDL}
+    )
 
-# 2. 生成命令
-add_custom_command(
-    OUTPUT ${D06_GEN_DIR}/HelloWorld.h ${D06_GEN_DIR}/HelloWorldPubSubTypes.cxx ${D06_GEN_DIR}/HelloWorldPubSubTypes.h ${D06_GEN_DIR}/HelloWorldTypeObjectSupport.cxx ${D06_GEN_DIR}/HelloWorldTypeObjectSupport.h
+    add_executable(day06_reactor 
+        day06_full_reactor/main.cpp
+        ${D06_GEN_DIR}/HelloWorldPubSubTypes.cxx
+        ${D06_GEN_DIR}/HelloWorldTypeObjectSupport.cxx
+    )
 
-    COMMAND ${FASTDDSGEN_EXE} -replace -d ${D06_GEN_DIR} ${D06_IDL}
-    DEPENDS ${D06_IDL}
-)
+    target_include_directories(day06_reactor PRIVATE ${D06_GEN_DIR})
+    target_link_libraries(day06_reactor fastdds fastcdr tiny_core Threads::Threads)
+else()
+    message(STATUS "fastddsgen not found. Skipping Day 06 build.")
+endif()
 
-# 3. 生成可执行文件
-add_executable(day06_reactor 
-    day06_full_reactor/main.cpp
-    ${D06_GEN_DIR}/HelloWorldPubSubTypes.cxx
-    ${D06_GEN_DIR}/HelloWorldTypeObjectSupport.cxx
-)
-
-# 4. 包含路径
-target_include_directories(day06_reactor PRIVATE ${D06_GEN_DIR})
-
-# 5. 【关键】链接：FastDDS + 你的核心库(EventLoop/ThreadPool) + 线程库
-target_link_libraries(day06_reactor 
-    fastdds fastcdr 
-    tiny_core 
-    Threads::Threads
-)
 # --- Day 07: node ---
 add_executable(day07_node day07_node_class/main.cpp)
 
@@ -121,3 +120,40 @@ target_link_libraries(day10_param tiny_core fastdds fastcdr Threads::Threads)
 add_executable(day11_latency day11_latency/main.cpp)
 # 只需要链接 tiny_core，因为它已经 PUBLIC 链接了 hiredis
 target_link_libraries(day11_latency tiny_core fastdds fastcdr Threads::Threads)
+
+
+# --- Day 12: Protobuf Support ---
+# 1. 寻找系统安装的 Protobuf 库
+find_package(Protobuf REQUIRED)
+
+# 2. 定义 proto 文件路径
+set(PROTO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/day12_protobuf/robot.proto)
+
+# 3. 自动生成 .pb.cc 和 .pb.h
+# 这行命令会生成代码，并将源文件路径放入 ${PROTO_SRCS}，头文件路径放入 ${PROTO_HDRS}
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_FILE})
+
+# 4. 创建可执行文件
+# 注意：要把生成的 ${PROTO_SRCS} 和 ${PROTO_HDRS} 一起加进去编译
+add_executable(day12_proto 
+    day12_protobuf/main.cpp
+    ${PROTO_SRCS} 
+    ${PROTO_HDRS}
+)
+
+# 5. 包含路径
+# CMAKE_CURRENT_BINARY_DIR 是 protoc 默认生成文件的位置 (robot.pb.h 在这)
+# CMAKE_SOURCE_DIR/src/generated 是 FastDDS 生成代码的位置 (BlobMsgPubSubTypes.h 在这)
+target_include_directories(day12_proto PRIVATE 
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_SOURCE_DIR}/src/generated
+)
+
+# 6. 链接库
+# 必须链接 protobuf::libprotobuf，以及我们的核心库
+target_link_libraries(day12_proto 
+    tiny_core 
+    fastdds fastcdr 
+    Threads::Threads 
+    protobuf::libprotobuf
+)

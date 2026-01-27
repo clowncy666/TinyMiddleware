@@ -1,0 +1,4 @@
+struct BlobMsg {
+    sequence<char> payload;
+    string type_name;
+};

@@ -1,7 +1,14 @@
 # 忽略编译生成目录
 build/
 cmake-build-debug/
-
+# 二进制文件与库
+bin/
+lib/
+*.o
+*.so
+*.a
+# 忽略将源码手动拷贝进来的第三方库目录
+third_party/
 # 忽略IDE配置文件 (如果你用 VSCode)
 .vscode/
 .idea/
