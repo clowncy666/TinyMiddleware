@@ -1,5 +1,9 @@
 # 忽略编译生成目录
 build/
+# 忽略 Docker 或者是打包的压缩包
+*.tar
+*.tar.gz
+*.zip
 cmake-build-debug/
 # 二进制文件与库
 bin/
